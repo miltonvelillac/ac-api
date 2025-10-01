@@ -1,0 +1,64 @@
+name: Build, Push & Deploy ac-api
+
+on:
+  push:
+    branches: [ "main" ]   # cámbialo si usas otra rama
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ac-api
+      IMAGE_TAG: latest
+      DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/ac-api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_TAG }}
+            ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
+          # caché opcional:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH (pull & up)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script_stop: true
+          script: |
+            set -e
+            # Asegura Docker y compose-plugin (por si la instancia es nueva)
+            if ! command -v docker >/dev/null 2>&1; then
+              sudo dnf -y install docker || sudo yum -y install docker
+              sudo service docker start || sudo systemctl enable --now docker
+              sudo usermod -aG docker $USER || true
+            fi
+
+            # Pull de la nueva imagen y reprovisión
+            cd /opt/ac-api
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/ac-api:latest
+            docker compose down || true
+            docker compose up -d
+
+            # Limpieza opcional
+            docker image prune -f
