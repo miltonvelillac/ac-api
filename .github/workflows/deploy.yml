@@ -36,12 +36,10 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
+          push: true                     # 👈 esto es lo que sube la imagen
           tags: |
-            ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_TAG }}
-            ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ secrets.DOCKERHUB_USERNAME }}/ac-api:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ac-api:${{ github.sha }}
 
   deploy:
     needs: build-and-push
