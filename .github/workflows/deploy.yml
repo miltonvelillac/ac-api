@@ -59,5 +59,7 @@ jobs:
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/ac-api:latest
             docker compose down || true
+            docker stop ac-api || true
+            docker rm ac-api || true
             docker compose up -d
             docker image prune -f
