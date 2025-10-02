@@ -58,7 +58,7 @@ jobs:
           script: |
             set -e
             cd /opt/ac-api
-            docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/ac-api:latest
             docker compose down || true
             docker compose up -d
